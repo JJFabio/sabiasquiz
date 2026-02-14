@@ -1,0 +1,16 @@
+services:
+  sabiasquiz:
+    image: ghcr.io/jjfabio/sabiasquiz:latest
+    restart: unless-stopped
+    networks:
+      - proxy-nw
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sabiasquiz.rule=Host(`sabiasquiz.nubia.ovh`)"
+      - "traefik.http.routers.sabiasquiz.entrypoints=websecure"
+      - "traefik.http.routers.sabiasquiz.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sabiasquiz.loadbalancer.server.port=8080"
+
+networks:
+  proxy-nw:
+    external: true

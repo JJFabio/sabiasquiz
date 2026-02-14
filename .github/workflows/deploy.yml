@@ -52,9 +52,13 @@ jobs:
     steps:
       - name: 📡 Trigger Deployment via Nubia Webhook
         run: |
+          # Read docker-compose.yml content and escape it for JSON
+          COMPOSE_CONTENT=$(cat docker-compose.yml | jq -sR .)
+          
           curl -X POST https://deploy.nubia.ovh/webhook \
             -H "Content-Type: application/json" \
-            -d '{
-              "app": "sabiasquiz",
-              "secret": "${{ secrets.NUBIA_DEPLOY_SECRET }}"
-            }'
+            -d "{
+              \"app\": \"sabiasquiz\",
+              \"secret\": \"${{ secrets.NUBIA_DEPLOY_SECRET }}\",
+              \"compose_file\": $COMPOSE_CONTENT
+            }"
