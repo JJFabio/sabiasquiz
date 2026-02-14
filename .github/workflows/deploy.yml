@@ -50,15 +50,39 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
       - name: 📡 Trigger Deployment via Nubia Webhook
         run: |
-          # Read docker-compose.yml content and escape it for JSON
-          COMPOSE_CONTENT=$(cat docker-compose.yml | jq -sR .)
+          # Robust JSON construction using jq
+          jq -n \
+            --arg app "sabiasquiz" \
+            --arg secret "${{ secrets.NUBIA_DEPLOY_SECRET }}" \
+            --rawfile compose docker-compose.yml \
+            '{app: $app, secret: $secret, compose_file: $compose}' > payload.json
           
           curl -X POST https://deploy.nubia.ovh/webhook \
             -H "Content-Type: application/json" \
-            -d "{
-              \"app\": \"sabiasquiz\",
-              \"secret\": \"${{ secrets.NUBIA_DEPLOY_SECRET }}\",
-              \"compose_file\": $COMPOSE_CONTENT
-            }"
+            -d @payload.json
+
+      - name: ✅ Verify Deployment (Health Check)
+        run: |
+          echo "Waiting for service to be healthy..."
+          RETRIES=20
+          URL="https://sabiasquiz.nubia.ovh"
+          
+          for i in $(seq 1 $RETRIES); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $URL || echo "000")
+            echo "Attempt $i: $URL returned $HTTP_CODE"
+            
+            if [ "$HTTP_CODE" -eq "200" ]; then
+              echo "✅ Service is UP and serving content!"
+              exit 0
+            fi
+            
+            sleep 5
+          done
+          
+          echo "❌ Service did not become healthy in time."
+          exit 1
